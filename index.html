@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>字由心證</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-main">
+      <section class="panel upload-panel" id="uploadPanel">
+        <div class="actions-row">
+          <button id="startBtn" class="primary" disabled>開始評選</button>
+          <button id="exportBtn" class="secondary" disabled>
+            匯出結果 CSV
+          </button>
+          <button id="clearBtn" class="ghost">全部清除紀錄</button>
+        </div>
+        <div class="progress-row">
+          <div class="stat"><span id="countTotal">0</span> 總筆數</div>
+          <div class="stat keep">保留：<span id="countKeep">0</span></div>
+          <div class="stat drop">不保留：<span id="countDrop">0</span></div>
+          <div class="stat skip">猶豫：<span id="countSkip">0</span></div>
+        </div>
+        <div class="progress-bar" aria-hidden="true">
+          <div id="progressFill"></div>
+        </div>
+      </section>
+
+      <section class="panel review-panel hidden" id="reviewPanel">
+        <div class="card">
+          <div class="char-area">
+            <div id="seqDisplay" class="unicode"></div>
+            <div id="charDisplay" class="hanzi">字</div>
+            <div id="unicodeDisplay" class="unicode"></div>
+          </div>
+          <div class="meta-area">
+            <div class="meta-grid">
+              <div class="meta-item">
+                <div class="meta-label">字集</div>
+                <div class="meta-value" id="fieldSet">—</div>
+              </div>
+              <div class="meta-item">
+                <div class="meta-label">分類</div>
+                <div class="meta-value" id="fieldCategory">—</div>
+              </div>
+              <div class="meta-item span-2">
+                <div class="meta-label">附註</div>
+                <div class="meta-value pre-wrap" id="fieldNote">—</div>
+              </div>
+              <div class="meta-item span-2">
+                <div class="meta-label">評選者筆記</div>
+                <div class="meta-value">
+                  <textarea
+                    id="userNote"
+                    rows="3"
+                    placeholder="寫下你的想法…"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="controls">
+              <button id="btnDrop" class="danger" title="不保留（← 或 A）">
+                不保留 ← / A
+              </button>
+              <button id="btnSkip" class="secondary" title="猶豫（↑ 或 W）">
+                猶豫 ↑ / W
+              </button>
+              <button id="btnKeep" class="success" title="保留（→ 或 D）">
+                保留 → / D
+              </button>
+            </div>
+            <div class="secondary-controls">
+              <button
+                id="btnUndo"
+                class="ghost"
+                title="上一步（Backspace 或 Z）"
+              >
+                上一步 ⌫ / Z
+              </button>
+              <div class="index-indicator">
+                <span id="indexNow">0</span> / <span id="indexTotal">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="finishBanner" class="finish hidden">
+          🎉 全部評選完成！可按「匯出結果」下載決策
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <div class="hint"></div>
+    </footer>
+
+    <script src="./app.js"></script>
+    <noscript>本工具需要啟用 JavaScript。</noscript>
+  </body>
+  <style></style>
+</html>
