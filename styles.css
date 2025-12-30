@@ -273,3 +273,59 @@ textarea#userNote:focus {
   border-color: #93c5fd;
   box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35);
 }
+
+/* 手機與小螢幕優化：縮小卡片與字體，調整排版 */
+@media (max-width: 480px) {
+  .app-main {
+    padding: 16px 12px 28px;
+  }
+  .review-panel .card {
+    width: 100%;
+    padding: 14px 16px 12px;
+    border-radius: 12px;
+  }
+  .hanzi {
+    font-size: clamp(70px, 20vw, 180px);
+  }
+  .unicode {
+    font-size: 14px;
+  }
+  .meta-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .meta-item {
+    padding: 10px;
+  }
+  .controls {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  button {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  .secondary-controls {
+    margin-top: 6px;
+  }
+  .index-indicator {
+    font-size: 13px;
+  }
+  textarea#userNote {
+    min-height: 64px;
+  }
+}
+
+@media (max-width: 360px) {
+  .hanzi {
+    font-size: clamp(64px, 18vw, 160px);
+  }
+  button {
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+  .meta-item {
+    padding: 8px;
+  }
+}
