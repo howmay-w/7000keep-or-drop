@@ -389,8 +389,8 @@
   function exportCSV() {
     if (!rawRows.length) return;
     const decisions = loadDecisions();
-    // 依需求：只輸出「決策、評選者筆記」兩欄
-    const outHeaders = ["決策", "評選者筆記"];
+    // 匯出「漢字、決策、評選者筆記」三欄，保留漢字本體
+    const outHeaders = ["漢字", "決策", "評選者筆記"];
     const lines = [];
     const esc = (v) => {
       const s = v == null ? "" : String(v);
@@ -405,7 +405,12 @@
       const d = decisions[id];
       const action = typeof d === "string" ? d : (d && d.action) || "";
       const note = typeof d === "object" && d ? d.note || "" : "";
-      const row = [action, note];
+      // 取得漢字本體：優先使用原 CSV 的「漢字」欄位，否則回退至 entries
+      const charField = headerMap.char;
+      const charValue =
+        (charField ? String(o[charField] ?? "") : "") ||
+        (entries.find((e) => e.id === id)?.char ?? "");
+      const row = [charValue, action, note];
       lines.push(row.map(esc).join(","));
     }
     const blob = new Blob([lines.join("\r\n")], {
