@@ -10,6 +10,7 @@
     startBtn: document.getElementById("startBtn"),
     exportBtn: document.getElementById("exportBtn"),
     clearBtn: document.getElementById("clearBtn"),
+    card: document.querySelector("#reviewPanel .card"),
     countTotal: document.getElementById("countTotal"),
     countKeep: document.getElementById("countKeep"),
     countDrop: document.getElementById("countDrop"),
@@ -106,7 +107,9 @@
       els.countTotal.textContent = String(entries.length);
       updateStats();
       els.startBtn.disabled = entries.length === 0;
-      console.info(`[autoLoad] 已載入主要資料：${path}（${entries.length} 筆）`);
+      console.info(
+        `[autoLoad] 已載入主要資料：${path}（${entries.length} 筆）`
+      );
     } catch (err) {
       console.error("[autoLoad] data.csv 載入失敗，請確認檔案是否存在。", err);
     }
@@ -270,7 +273,7 @@
       skip = 0;
     for (const e of entries) {
       const d = decisions[e.id];
-      const action = typeof d === "string" ? d : (d && d.action);
+      const action = typeof d === "string" ? d : d && d.action;
       if (action === "keep") keep++;
       else if (action === "drop") drop++;
       else if (action === "skip") skip++;
@@ -429,6 +432,253 @@
     }, 0);
   }
 
+  /** 綁定滑動手勢（左右滑動決策） */
+  function bindSwipe() {
+    const target = els.card;
+    if (!target) return;
+    // 允許垂直滾動、攔截水平滑動
+    try {
+      // 攔截瀏覽器預設捲動，統一由手勢邏輯處理
+      target.style.touchAction = "none";
+      // 讓預覽卡片可以絕對定位在面板內
+      if (
+        els.reviewPanel &&
+        getComputedStyle(els.reviewPanel).position === "static"
+      ) {
+        els.reviewPanel.style.position = "relative";
+      }
+      // 確保被滑動的卡片能以 z-index 疊在預覽之上
+      if (getComputedStyle(target).position === "static") {
+        target.style.position = "relative";
+      }
+    } catch {}
+    let isDragging = false;
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let deltaX = 0;
+    let deltaY = 0;
+    let previewEl = null; // 預覽卡片（下一張，80% 濃度）
+    const swipeThresholdPx = 80; // 觸發滑動的必要位移
+    const maxRotateDeg = 10;
+    const setTransform = (x, y, rot) => {
+      target.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg)`;
+    };
+    const resetTransform = (withAnim = true) => {
+      if (withAnim) target.style.transition = "transform 200ms ease";
+      setTransform(0, 0, 0);
+      if (withAnim) {
+        setTimeout(() => {
+          target.style.transition = "";
+        }, 200);
+      }
+    };
+    function removePreview() {
+      if (previewEl && previewEl.parentNode) {
+        previewEl.parentNode.removeChild(previewEl);
+      }
+      previewEl = null;
+      target.style.zIndex = "";
+    }
+    function findNextUndecidedIndex() {
+      const total = entries.length;
+      if (!total) return -1;
+      const decisions = loadDecisions();
+      for (let i = 1; i <= total; i++) {
+        const j = (idx + i) % total;
+        const e = entries[j];
+        if (!decisions[e.id]) return j;
+      }
+      return -1;
+    }
+    function ensurePreview() {
+      if (previewEl) return;
+      const nextIdx = findNextUndecidedIndex();
+      if (nextIdx < 0) return;
+      const next = entries[nextIdx];
+      const panel = els.reviewPanel;
+      if (!panel) return;
+      const panelRect = panel.getBoundingClientRect();
+      const cardRect = target.getBoundingClientRect();
+      const left = cardRect.left - panelRect.left;
+      const top = cardRect.top - panelRect.top;
+      // 建立預覽卡片（避免重複 id）
+      const el = document.createElement("div");
+      el.className = "card";
+      el.style.position = "absolute";
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+      el.style.width = `${cardRect.width}px`;
+      el.style.height = `${cardRect.height}px`;
+      el.style.opacity = "0.8";
+      el.style.pointerEvents = "none";
+      el.style.zIndex = "1";
+      el.style.transform = "none";
+      const decisionsPrev = loadDecisions();
+      const dPrev = decisionsPrev[next.id];
+      const notePreview =
+        (typeof dPrev === "object" && dPrev ? dPrev.note || "" : "") || "";
+      const nextPos = nextIdx + 1;
+      const total = entries.length;
+      el.innerHTML = `
+        <div class="char-area">
+          <div class="unicode">${next.id ? `序號 ${next.id}` : ""}</div>
+          <div class="hanzi">${next.char || "—"}</div>
+          <div class="unicode">${next.unicode ? `U+${next.unicode}` : ""}</div>
+        </div>
+        <div class="meta-area">
+          <div class="meta-grid">
+            <div class="meta-item">
+              <div class="meta-label">字集</div>
+              <div class="meta-value">${next.set || "—"}</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">分類</div>
+              <div class="meta-value">${next.category || "—"}</div>
+            </div>
+            <div class="meta-item span-2">
+              <div class="meta-label">附註</div>
+              <div class="meta-value pre-wrap">${next.note || "—"}</div>
+            </div>
+            <div class="meta-item span-2">
+              <div class="meta-label">評選者筆記</div>
+              <div class="meta-value">
+                <textarea rows="3" placeholder="寫下你的想法…" disabled>${notePreview}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="controls" style="margin-top:14px;">
+          <button class="danger" disabled>不保留 ← / A</button>
+          <button class="secondary" disabled>猶豫 ↑ / W</button>
+          <button class="success" disabled>保留 → / D</button>
+        </div>
+        <div class="secondary-controls" style="margin-top:8px;">
+          <button class="ghost" disabled>上一步 ⌫ / Z</button>
+          <div class="index-indicator"><span>${nextPos}</span> / <span>${total}</span></div>
+        </div>
+      `;
+      panel.appendChild(el);
+      previewEl = el;
+      // 確保拖曳中的卡片在上層
+      target.style.zIndex = "2";
+    }
+    const handleCommit = (direction) => {
+      // 若有預覽，先移除（底層將立刻換下一張）
+      removePreview();
+      // 建立幽靈卡片做滑出動畫，底層立即換下一張
+      const rect = target.getBoundingClientRect();
+      const ghost = target.cloneNode(true);
+      ghost.style.position = "fixed";
+      ghost.style.left = rect.left + "px";
+      ghost.style.top = rect.top + "px";
+      ghost.style.width = rect.width + "px";
+      ghost.style.height = rect.height + "px";
+      ghost.style.margin = "0";
+      ghost.style.zIndex = "999";
+      ghost.style.pointerEvents = "none";
+      // 承接目前位移
+      ghost.style.transform = target.style.transform || "";
+      document.body.appendChild(ghost);
+
+      // 底層卡片歸位，準備顯示下一張
+      target.style.transition = "";
+      setTransform(0, 0, 0);
+
+      // 先決策以立即換下一張
+      if (direction === "right") {
+        decideCurrent("keep");
+      } else if (direction === "left") {
+        decideCurrent("drop");
+      } else if (direction === "up") {
+        decideCurrent("skip");
+      }
+
+      // 幽靈卡片滑出動畫
+      const width = rect.width || 300;
+      const height = rect.height || 200;
+      requestAnimationFrame(() => {
+        ghost.style.transition = "transform 180ms ease";
+        if (direction === "right" || direction === "left") {
+          const outX = direction === "right" ? width * 1.1 : -width * 1.1;
+          const outRot = direction === "right" ? maxRotateDeg : -maxRotateDeg;
+          ghost.style.transform = `translate(${outX}px, 0px) rotate(${outRot}deg)`;
+        } else if (direction === "up") {
+          const outY = -height * 1.1;
+          ghost.style.transform = `translate(0px, ${outY}px) rotate(0deg)`;
+        }
+        setTimeout(() => {
+          if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+        }, 190);
+      });
+    };
+    const onPointerDown = (e) => {
+      if (isDragging) return;
+      pointerId = e.pointerId;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      deltaX = 0;
+      deltaY = 0;
+      target.style.transition = "";
+      // 顯示下一張預覽
+      ensurePreview();
+      try {
+        target.setPointerCapture(pointerId);
+      } catch {}
+    };
+    const onPointerMove = (e) => {
+      if (!isDragging || e.pointerId !== pointerId) return;
+      deltaX = e.clientX - startX;
+      deltaY = e.clientY - startY;
+      // 只在水平主導時提供回饋
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        const width = target.offsetWidth || 300;
+        const rotate = Math.max(
+          -maxRotateDeg,
+          Math.min(maxRotateDeg, (deltaX / width) * maxRotateDeg)
+        );
+        setTransform(deltaX, 0, rotate);
+      } else {
+        // 垂直主導時提供上/下移動回饋（不旋轉）
+        setTransform(0, deltaY, 0);
+      }
+    };
+    const onPointerUpOrCancel = (e) => {
+      if (!isDragging || e.pointerId !== pointerId) return;
+      isDragging = false;
+      try {
+        target.releasePointerCapture(pointerId);
+      } catch {}
+      const movedX = deltaX;
+      const movedY = deltaY;
+      // 決定是否觸發滑動行為（忽略垂直為主的拖曳）
+      if (
+        Math.abs(movedX) > Math.abs(movedY) &&
+        Math.abs(movedX) >= swipeThresholdPx
+      ) {
+        handleCommit(movedX > 0 ? "right" : "left");
+      } else if (
+        Math.abs(movedY) > Math.abs(movedX) &&
+        movedY <= -swipeThresholdPx
+      ) {
+        // 上滑觸發「猶豫」
+        handleCommit("up");
+      } else {
+        resetTransform(true);
+        removePreview();
+      }
+    };
+    target.addEventListener("pointerdown", onPointerDown, { passive: true });
+    target.addEventListener("pointermove", onPointerMove, { passive: true });
+    target.addEventListener("pointerup", onPointerUpOrCancel, {
+      passive: true,
+    });
+    target.addEventListener("pointercancel", onPointerUpOrCancel, {
+      passive: true,
+    });
+  }
+
   /** 綁定事件 */
   function bindEvents() {
     els.startBtn.addEventListener("click", () => {
@@ -438,6 +688,8 @@
       renderCurrent();
     });
     els.exportBtn.addEventListener("click", exportCSV);
+    // 綁定滑動手勢
+    bindSwipe();
     if (els.clearBtn) {
       els.clearBtn.addEventListener("click", () => {
         const ok = confirm("確定要清除所有評選紀錄與筆記嗎？此動作無法復原。");
