@@ -536,11 +536,10 @@
   function bindSwipe() {
     const target = els.card;
     if (!target) return;
-    // 允許垂直滾動、攔截水平滑動
+    // 完全控制卡片上的手勢，避免與頁面滾動衝突
     try {
-      // 攔截瀏覽器預設捲動，統一由手勢邏輯處理（僅在觸摸設備上）
-      // 使用 pan-y 允許垂直滾動，但阻止水平滾動和縮放
-      target.style.touchAction = "pan-y pinch-zoom";
+      // 使用 none 完全控制手勢，避免瀏覽器預設滾動行為
+      target.style.touchAction = "none";
       // 讓預覽卡片可以絕對定位在面板內
       if (
         els.reviewPanel &&
@@ -560,7 +559,8 @@
     let deltaX = 0;
     let deltaY = 0;
     let previewEl = null; // 預覽卡片（下一張，80% 濃度）
-    const swipeThresholdPx = 80; // 觸發滑動的必要位移
+    const swipeThresholdPx = 80; // 觸發滑動的必要位移（水平）
+    const swipeThresholdUpPx = 100; // 觸發上滑的必要位移（垂直，降低以更容易觸發）
     const maxRotateDeg = 10;
     const setTransform = (x, y, rot) => {
       target.style.transform = `translate(${x}px, ${y}px) rotate(${rot}deg)`;
@@ -688,6 +688,8 @@
       ) {
         return;
       }
+      // 阻止預設行為，避免頁面滾動
+      e.preventDefault();
       pointerId = e.pointerId;
       isDragging = true;
       startX = e.clientX;
@@ -703,6 +705,8 @@
     };
     const onPointerMove = (e) => {
       if (!isDragging || e.pointerId !== pointerId) return;
+      // 阻止預設行為，避免頁面滾動
+      e.preventDefault();
       deltaX = e.clientX - startX;
       deltaY = e.clientY - startY;
       // 只在水平主導時提供回饋
@@ -726,27 +730,32 @@
       } catch {}
       const movedX = deltaX;
       const movedY = deltaY;
-      // 決定是否觸發滑動行為（忽略垂直為主的拖曳）
+      // 決定是否觸發滑動行為
       if (
         Math.abs(movedX) > Math.abs(movedY) &&
         Math.abs(movedX) >= swipeThresholdPx
       ) {
+        // 水平滑動：保留或踢掉
         handleCommit(movedX > 0 ? "right" : "left");
-      } else if (Math.abs(movedY) > Math.abs(movedX) && movedY <= -200) {
-        // 上滑觸發「猶豫」（使用較小的判定距離減少誤觸）
+      } else if (
+        Math.abs(movedY) > Math.abs(movedX) &&
+        movedY <= -swipeThresholdUpPx
+      ) {
+        // 上滑觸發「猶豫」（降低閾值以更容易觸發）
         handleCommit("up");
       } else {
         resetTransform(true);
         removePreview();
       }
     };
-    target.addEventListener("pointerdown", onPointerDown, { passive: true });
-    target.addEventListener("pointermove", onPointerMove, { passive: true });
+    // 使用 passive: false 以允許阻止預設行為
+    target.addEventListener("pointerdown", onPointerDown, { passive: false });
+    target.addEventListener("pointermove", onPointerMove, { passive: false });
     target.addEventListener("pointerup", onPointerUpOrCancel, {
-      passive: true,
+      passive: false,
     });
     target.addEventListener("pointercancel", onPointerUpOrCancel, {
-      passive: true,
+      passive: false,
     });
   }
 
