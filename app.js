@@ -519,8 +519,10 @@
       return;
     }
     const maxRotateDeg = 10;
+
+    // 先保存當前卡片的 transform 狀態（用於 ghost）
+    const currentTransform = getComputedStyle(target).transform;
     const rect = target.getBoundingClientRect();
-    const ghost = target.cloneNode(true);
 
     // 計算動畫目標位置
     const width = rect.width || 300;
@@ -540,6 +542,12 @@
       outRot = 0;
     }
 
+    // 先決策以立即換下一張（在創建 ghost 之前）
+    decideCurrent(decision);
+
+    // 現在創建 ghost 卡片（基於更新後的卡片內容，但使用舊的位置）
+    const ghost = target.cloneNode(true);
+
     // 設置幽靈卡片樣式
     ghost.style.position = "fixed";
     ghost.style.left = rect.left + "px";
@@ -550,19 +558,18 @@
     ghost.style.zIndex = "999";
     ghost.style.pointerEvents = "none";
     ghost.style.willChange = "transform";
-    ghost.style.transform = "translate(0px, 0px) rotate(0deg)";
+    // 使用保存的 transform 或當前位置
+    ghost.style.transform =
+      currentTransform || "translate(0px, 0px) rotate(0deg)";
     ghost.style.transition = "none";
     document.body.appendChild(ghost);
 
     // 強制重排，確保初始狀態已渲染
     ghost.offsetHeight;
 
-    // 底層卡片歸位
+    // 底層卡片歸位（在 ghost 創建後）
     target.style.transition = "";
     target.style.transform = "";
-
-    // 先決策以立即換下一張
-    decideCurrent(decision);
 
     // 使用雙重 requestAnimationFrame 確保動畫觸發
     requestAnimationFrame(() => {
@@ -711,11 +718,9 @@
     const handleCommit = (direction) => {
       // 若有預覽，先移除（底層將立刻換下一張）
       removePreview();
-      // 重置變換
-      target.style.transition = "";
-      setTransform(0, 0, 0);
 
       // 根據方向調用帶動畫的決策函數
+      // decideWithAnimation 會自己處理重置和動畫
       if (direction === "right") {
         decideWithAnimation("keep");
       } else if (direction === "left") {
