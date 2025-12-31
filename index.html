@@ -10,20 +10,33 @@
     <main class="app-main">
       <section class="panel upload-panel" id="uploadPanel">
         <div class="actions-row">
-          <button id="startBtn" class="primary" disabled>開始評選</button>
-          <button id="exportBtn" class="secondary" disabled>
-            匯出結果 CSV
-          </button>
-          <button id="clearBtn" class="ghost">全部清除紀錄</button>
+          <button id="startBtn" class="primary" disabled>開始</button>
+          <button id="exportBtn" class="secondary" disabled>匯出結果</button>
+          <button id="clearBtn" class="danger">清除紀錄</button>
+          <button id="menuBtn" class="ghost" title="更多功能">搜尋</button>
         </div>
         <div class="progress-row">
           <div class="stat"><span id="countTotal">0</span> 總筆數</div>
           <div class="stat keep">保留：<span id="countKeep">0</span></div>
-          <div class="stat drop">不保留：<span id="countDrop">0</span></div>
+          <div class="stat drop">踢掉：<span id="countDrop">0</span></div>
           <div class="stat skip">猶豫：<span id="countSkip">0</span></div>
         </div>
         <div class="progress-bar" aria-hidden="true">
           <div id="progressFill"></div>
+        </div>
+        <div id="moreMenu" class="more-menu hidden" aria-hidden="true">
+          <div class="menu-row">
+            <input
+              id="searchChar"
+              type="text"
+              inputmode="search"
+              placeholder="輸入漢字"
+            />
+            <button id="searchGo" class="secondary">跳至該字</button>
+          </div>
+          <div class="menu-row">
+            <button id="jumpUnreviewed" class="primary">跳到尚未評選</button>
+          </div>
         </div>
       </section>
 
@@ -31,7 +44,7 @@
         <div class="card">
           <div class="char-area">
             <div id="seqDisplay" class="unicode"></div>
-            <div id="charDisplay" class="hanzi">字</div>
+            <div id="charDisplay" class="hanzi">—</div>
             <div id="unicodeDisplay" class="unicode"></div>
           </div>
           <div class="meta-area">
@@ -53,34 +66,32 @@
                 <div class="meta-value">
                   <textarea
                     id="userNote"
-                    rows="3"
-                    placeholder="寫下你的想法…"
+                    rows="2"
+                    placeholder="請留言去留理由🥹"
                   ></textarea>
                 </div>
               </div>
             </div>
-            <div class="controls">
-              <button id="btnDrop" class="danger" title="不保留（← 或 A）">
-                不保留 ← / A
-              </button>
-              <button id="btnSkip" class="secondary" title="猶豫（↑ 或 W）">
-                猶豫 ↑ / W
-              </button>
-              <button id="btnKeep" class="success" title="保留（→ 或 D）">
-                保留 → / D
-              </button>
-            </div>
-            <div class="secondary-controls">
-              <button
-                id="btnUndo"
-                class="ghost"
-                title="上一步（Backspace 或 Z）"
-              >
-                上一步 ⌫ / Z
-              </button>
-              <div class="index-indicator">
-                <span id="indexNow">0</span> / <span id="indexTotal">0</span>
-              </div>
+          </div>
+        </div>
+        <div class="card-controls">
+          <div class="controls">
+            <button id="btnDrop" class="danger" title="踢掉（← 或 A）">
+              踢掉 ← / A
+            </button>
+            <button id="btnSkip" class="secondary" title="猶豫（↑ 或 W）">
+              猶豫 ↑ / W
+            </button>
+            <button id="btnKeep" class="success" title="保留（→ 或 D）">
+              保留 → / D
+            </button>
+          </div>
+          <div class="secondary-controls">
+            <button id="btnUndo" class="ghost" title="上一步（Backspace 或 Z）">
+              上一步 ⌫ / Z
+            </button>
+            <div class="index-indicator">
+              <span id="indexNow">0</span> / <span id="indexTotal">0</span>
             </div>
           </div>
         </div>

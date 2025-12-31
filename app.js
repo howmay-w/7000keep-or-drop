@@ -11,6 +11,12 @@
     exportBtn: document.getElementById("exportBtn"),
     clearBtn: document.getElementById("clearBtn"),
     card: document.querySelector("#reviewPanel .card"),
+    // 更多功能選單
+    menuBtn: document.getElementById("menuBtn"),
+    moreMenu: document.getElementById("moreMenu"),
+    searchChar: document.getElementById("searchChar"),
+    searchGo: document.getElementById("searchGo"),
+    jumpUnreviewed: document.getElementById("jumpUnreviewed"),
     countTotal: document.getElementById("countTotal"),
     countKeep: document.getElementById("countKeep"),
     countDrop: document.getElementById("countDrop"),
@@ -282,7 +288,7 @@
   }
 
   /** 顯示當前項目 */
-  function renderCurrent() {
+  function renderCurrent(forceShow = false) {
     if (!entries.length) return;
     const total = entries.length;
     const decisions = loadDecisions();
@@ -290,18 +296,23 @@
 
     // 找到第一個未決策項（若 idx 已決策，往後找）
     idx = Math.max(0, Math.min(idx, total - 1));
-    for (let i = 0; i < total; i++) {
-      const j = (idx + i) % total;
-      const e = entries[j];
-      if (!decisions[e.id]) {
-        idx = j;
-        break;
+    if (!forceShow) {
+      for (let i = 0; i < total; i++) {
+        const j = (idx + i) % total;
+        const e = entries[j];
+        if (!decisions[e.id]) {
+          idx = j;
+          break;
+        }
+        if (i === total - 1) {
+          // 全部完成
+          showFinished();
+          return;
+        }
       }
-      if (i === total - 1) {
-        // 全部完成
-        showFinished();
-        return;
-      }
+    } else {
+      // 強制顯示模式：確保 idx 在範圍內即可
+      idx = Math.max(0, Math.min(idx, total - 1));
     }
     const entry = entries[idx];
     els.indexNow.textContent = String(idx + 1);
@@ -321,6 +332,36 @@
   function showFinished() {
     els.finishBanner.classList.remove("hidden");
     els.indexNow.textContent = String(entries.length);
+  }
+
+  /** 依輸入字串取第一個 code point 作比較用 */
+  function normalizeFirstChar(text) {
+    const t = String(text || "").trim();
+    if (!t) return "";
+    const first = [...t][0];
+    return first || "";
+  }
+  /** 尋找第一個首字等於指定漢字的索引（找不到回 -1） */
+  function findIndexByFirstChar(ch) {
+    const target = normalizeFirstChar(ch);
+    if (!target) return -1;
+    for (let i = 0; i < entries.length; i++) {
+      const c = normalizeFirstChar(entries[i].char);
+      if (c === target) return i;
+    }
+    return -1;
+  }
+  /** 從指定起點尋找下一個未決策的索引，找不到回 -1 */
+  function findNextUndecidedIndexFrom(startIdx) {
+    const total = entries.length;
+    if (!total) return -1;
+    const decisions = loadDecisions();
+    for (let i = 0; i < total; i++) {
+      const j = (startIdx + i) % total;
+      const e = entries[j];
+      if (!decisions[e.id]) return j;
+    }
+    return -1;
   }
 
   /** 更新統計與進度條 */
@@ -432,14 +473,74 @@
     }, 0);
   }
 
+  /** 帶動畫的決策函數 */
+  function decideWithAnimation(decision) {
+    const target = els.card;
+    if (!target) {
+      decideCurrent(decision);
+      return;
+    }
+    const maxRotateDeg = 10;
+    const rect = target.getBoundingClientRect();
+    const ghost = target.cloneNode(true);
+    ghost.style.position = "fixed";
+    ghost.style.left = rect.left + "px";
+    ghost.style.top = rect.top + "px";
+    ghost.style.width = rect.width + "px";
+    ghost.style.height = rect.height + "px";
+    ghost.style.margin = "0";
+    ghost.style.zIndex = "999";
+    ghost.style.pointerEvents = "none";
+    ghost.style.transform = "";
+    document.body.appendChild(ghost);
+
+    // 底層卡片歸位
+    target.style.transition = "";
+    target.style.transform = "";
+
+    // 先決策以立即換下一張
+    decideCurrent(decision);
+
+    // 幽靈卡片滑出動畫
+    const width = rect.width || 300;
+    const height = rect.height || 200;
+    let outX = 0,
+      outY = 0,
+      outRot = 0;
+
+    if (decision === "keep") {
+      outX = width * 1.1;
+      outRot = maxRotateDeg;
+    } else if (decision === "drop") {
+      outX = -width * 1.1;
+      outRot = -maxRotateDeg;
+    } else if (decision === "skip") {
+      outY = -height * 1.1;
+      outRot = 0;
+    }
+
+    requestAnimationFrame(() => {
+      ghost.style.transition = "transform 350ms ease";
+      if (decision === "skip") {
+        ghost.style.transform = `translate(0px, ${outY}px) rotate(0deg)`;
+      } else {
+        ghost.style.transform = `translate(${outX}px, 0px) rotate(${outRot}deg)`;
+      }
+      setTimeout(() => {
+        if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      }, 360);
+    });
+  }
+
   /** 綁定滑動手勢（左右滑動決策） */
   function bindSwipe() {
     const target = els.card;
     if (!target) return;
     // 允許垂直滾動、攔截水平滑動
     try {
-      // 攔截瀏覽器預設捲動，統一由手勢邏輯處理
-      target.style.touchAction = "none";
+      // 攔截瀏覽器預設捲動，統一由手勢邏輯處理（僅在觸摸設備上）
+      // 使用 pan-y 允許垂直滾動，但阻止水平滾動和縮放
+      target.style.touchAction = "pan-y pinch-zoom";
       // 讓預覽卡片可以絕對定位在面板內
       if (
         els.reviewPanel &&
@@ -543,19 +644,10 @@
             <div class="meta-item span-2">
               <div class="meta-label">評選者筆記</div>
               <div class="meta-value">
-                <textarea rows="3" placeholder="寫下你的想法…" disabled>${notePreview}</textarea>
+                <textarea rows="2" placeholder="請留言去留理由🥹" disabled>${notePreview}</textarea>
               </div>
             </div>
           </div>
-        </div>
-        <div class="controls" style="margin-top:14px;">
-          <button class="danger" disabled>不保留 ← / A</button>
-          <button class="secondary" disabled>猶豫 ↑ / W</button>
-          <button class="success" disabled>保留 → / D</button>
-        </div>
-        <div class="secondary-controls" style="margin-top:8px;">
-          <button class="ghost" disabled>上一步 ⌫ / Z</button>
-          <div class="index-indicator"><span>${nextPos}</span> / <span>${total}</span></div>
         </div>
       `;
       panel.appendChild(el);
@@ -566,54 +658,36 @@
     const handleCommit = (direction) => {
       // 若有預覽，先移除（底層將立刻換下一張）
       removePreview();
-      // 建立幽靈卡片做滑出動畫，底層立即換下一張
-      const rect = target.getBoundingClientRect();
-      const ghost = target.cloneNode(true);
-      ghost.style.position = "fixed";
-      ghost.style.left = rect.left + "px";
-      ghost.style.top = rect.top + "px";
-      ghost.style.width = rect.width + "px";
-      ghost.style.height = rect.height + "px";
-      ghost.style.margin = "0";
-      ghost.style.zIndex = "999";
-      ghost.style.pointerEvents = "none";
-      // 承接目前位移
-      ghost.style.transform = target.style.transform || "";
-      document.body.appendChild(ghost);
-
-      // 底層卡片歸位，準備顯示下一張
+      // 重置變換
       target.style.transition = "";
       setTransform(0, 0, 0);
 
-      // 先決策以立即換下一張
+      // 根據方向調用帶動畫的決策函數
       if (direction === "right") {
-        decideCurrent("keep");
+        decideWithAnimation("keep");
       } else if (direction === "left") {
-        decideCurrent("drop");
+        decideWithAnimation("drop");
       } else if (direction === "up") {
-        decideCurrent("skip");
+        decideWithAnimation("skip");
       }
-
-      // 幽靈卡片滑出動畫
-      const width = rect.width || 300;
-      const height = rect.height || 200;
-      requestAnimationFrame(() => {
-        ghost.style.transition = "transform 180ms ease";
-        if (direction === "right" || direction === "left") {
-          const outX = direction === "right" ? width * 1.1 : -width * 1.1;
-          const outRot = direction === "right" ? maxRotateDeg : -maxRotateDeg;
-          ghost.style.transform = `translate(${outX}px, 0px) rotate(${outRot}deg)`;
-        } else if (direction === "up") {
-          const outY = -height * 1.1;
-          ghost.style.transform = `translate(0px, ${outY}px) rotate(0deg)`;
-        }
-        setTimeout(() => {
-          if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
-        }, 190);
-      });
     };
     const onPointerDown = (e) => {
       if (isDragging) return;
+      // 如果點擊的是按鈕、輸入框或其他可交互元素，不攔截事件
+      const tag = e.target?.tagName?.toLowerCase();
+      const isInteractive =
+        tag === "button" ||
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "a";
+      if (
+        isInteractive ||
+        e.target.closest("button") ||
+        e.target.closest("input") ||
+        e.target.closest("textarea")
+      ) {
+        return;
+      }
       pointerId = e.pointerId;
       isDragging = true;
       startX = e.clientX;
@@ -658,11 +732,8 @@
         Math.abs(movedX) >= swipeThresholdPx
       ) {
         handleCommit(movedX > 0 ? "right" : "left");
-      } else if (
-        Math.abs(movedY) > Math.abs(movedX) &&
-        movedY <= -swipeThresholdPx
-      ) {
-        // 上滑觸發「猶豫」
+      } else if (Math.abs(movedY) > Math.abs(movedX) && movedY <= -200) {
+        // 上滑觸發「猶豫」（使用較小的判定距離減少誤觸）
         handleCommit("up");
       } else {
         resetTransform(true);
@@ -683,7 +754,6 @@
   function bindEvents() {
     els.startBtn.addEventListener("click", () => {
       if (!entries.length) return;
-      els.uploadPanel.classList.remove("hidden");
       els.reviewPanel.classList.remove("hidden");
       renderCurrent();
     });
@@ -704,10 +774,64 @@
       });
     }
 
-    els.btnKeep.addEventListener("click", () => decideCurrent("keep"));
-    els.btnDrop.addEventListener("click", () => decideCurrent("drop"));
-    els.btnSkip.addEventListener("click", () => decideCurrent("skip"));
+    els.btnKeep.addEventListener("click", () => decideWithAnimation("keep"));
+    els.btnDrop.addEventListener("click", () => decideWithAnimation("drop"));
+    els.btnSkip.addEventListener("click", () => decideWithAnimation("skip"));
     els.btnUndo.addEventListener("click", undoLast);
+
+    // 更多選單：顯示/隱藏
+    if (els.menuBtn && els.moreMenu) {
+      els.menuBtn.addEventListener("click", () => {
+        els.moreMenu.classList.toggle("hidden");
+        const isHidden = els.moreMenu.classList.contains("hidden");
+        els.moreMenu.setAttribute("aria-hidden", isHidden ? "true" : "false");
+        if (!isHidden && els.searchChar) {
+          // 聚焦輸入框
+          try {
+            els.searchChar.focus();
+          } catch {}
+        }
+      });
+    }
+    // 搜尋跳至該字
+    if (els.searchGo && els.searchChar) {
+      const doSearch = () => {
+        const input = String(els.searchChar.value || "");
+        const ch = normalizeFirstChar(input);
+        if (!ch) {
+          alert("請輸入欲查找的漢字（取第一個字）");
+          return;
+        }
+        const pos = findIndexByFirstChar(ch);
+        if (pos >= 0) {
+          idx = pos;
+          renderCurrent(true); // 強制顯示該字，即使已評選
+          els.moreMenu && els.moreMenu.classList.add("hidden");
+        } else {
+          alert("找不到該字。");
+        }
+      };
+      els.searchGo.addEventListener("click", doSearch);
+      els.searchChar.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          doSearch();
+        }
+      });
+    }
+    // 跳到尚未評選
+    if (els.jumpUnreviewed) {
+      els.jumpUnreviewed.addEventListener("click", () => {
+        const pos = findNextUndecidedIndexFrom(0);
+        if (pos >= 0) {
+          idx = pos;
+          renderCurrent();
+          els.moreMenu && els.moreMenu.classList.add("hidden");
+        } else {
+          alert("太棒了！目前沒有尚未評選的項目。");
+        }
+      });
+    }
 
     window.addEventListener("keydown", (e) => {
       // 避免影響輸入框
@@ -717,13 +841,13 @@
 
       if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
         e.preventDefault();
-        decideCurrent("keep");
+        decideWithAnimation("keep");
       } else if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
         e.preventDefault();
-        decideCurrent("drop");
+        decideWithAnimation("drop");
       } else if (e.key === "ArrowUp" || e.key.toLowerCase() === "w") {
         e.preventDefault();
-        decideCurrent("skip");
+        decideWithAnimation("skip");
       } else if (e.key === "Backspace" || e.key.toLowerCase() === "z") {
         e.preventDefault();
         undoLast();
@@ -732,6 +856,8 @@
   }
 
   // 初始化：先載入排除清單 → 嘗試自動載入主要資料 → 綁定事件與初始統計
+  // 確保 review panel 一開始是隱藏的
+  els.reviewPanel.classList.add("hidden");
   loadExcludeList()
     .then(autoLoadPrimaryData)
     .finally(() => {

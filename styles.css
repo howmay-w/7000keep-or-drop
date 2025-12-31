@@ -72,7 +72,6 @@ input[type="file"] {
   border-radius: 10px;
 }
 .actions-row {
-  margin-top: 12px;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -148,18 +147,48 @@ button:disabled {
   transition: width 0.2s ease;
 }
 
+.review-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.review-panel.hidden {
+  display: none !important;
+}
 .review-panel .card {
   width: 480px;
   max-width: 95vw;
-  background: #ffffff;
-  border: none;
+  background: var(--panel);
+  border: 1px solid var(--outline);
   border-radius: 16px;
   padding: 20px 24px 16px;
-  box-shadow: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.card-controls {
+  width: 480px;
+  max-width: 95vw;
+  padding: 0 24px 16px;
+  margin-top: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.upload-panel {
+  width: 480px;
+  max-width: 95vw;
+  box-sizing: border-box;
 }
 .char-area {
   background: transparent;
@@ -177,7 +206,9 @@ button:disabled {
   color: #111827;
 }
 .unicode {
-  margin-top: 8px;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  line-height: 1.6;
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 16px;
@@ -189,17 +220,23 @@ button:disabled {
   border-radius: 0;
   padding: 0;
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 .meta-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
 }
 .meta-item {
   background: #fafafa;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   padding: 12px;
+  min-width: 0;
+  overflow: hidden;
 }
 .meta-item.span-2 {
   grid-column: 1 / -1;
@@ -212,13 +249,15 @@ button:disabled {
 .meta-value {
   font-size: 16px;
   color: #111827;
+  min-width: 0;
+  overflow: hidden;
 }
 .pre-wrap {
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.controls {
+.card-controls .controls {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
@@ -236,13 +275,50 @@ button:disabled {
   font-size: 14px;
 }
 
-.finish {
+.more-menu {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+.more-menu .menu-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+.more-menu .menu-row button {
+  width: auto;
+  white-space: nowrap;
+}
+.more-menu .menu-row + .menu-row {
+  margin-top: 8px;
+}
+.more-menu input#searchChar {
+  padding: 8px 8px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  min-width: 0;
+  width: 100%;
+}
+
+.review-panel .finish {
+  width: 480px;
+  max-width: 95vw;
   margin-top: 12px;
   padding: 10px 12px;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   color: #334155;
+  box-sizing: border-box;
 }
 
 .app-footer {
@@ -257,7 +333,8 @@ button:disabled {
   text-align: center;
 }
 
-textarea#userNote {
+textarea#userNote,
+.meta-value textarea {
   width: 100%;
   min-height: 72px;
   resize: vertical;
@@ -267,65 +344,173 @@ textarea#userNote {
   background: #ffffff;
   color: #111827;
   font: inherit;
+  box-sizing: border-box;
 }
-textarea#userNote:focus {
+textarea#userNote:focus,
+.meta-value textarea:focus {
   outline: none;
   border-color: #93c5fd;
   box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35);
+}
+.meta-value textarea:disabled {
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: not-allowed;
 }
 
 /* 手機與小螢幕優化：縮小卡片與字體，調整排版 */
 @media (max-width: 480px) {
   .app-main {
-    padding: 16px 12px 28px;
+    padding: 16px 16px 20px;
+  }
+  /* 手機時：卡片在上、操作在下 */
+  .review-panel {
+    order: 1;
+  }
+  .upload-panel {
+    order: 2;
+  }
+  /* 上方操作列使用 flex，按鈕寬度包圍內容 */
+  .actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .actions-row button {
+    width: auto;
+  }
+  .upload-panel {
+    width: 320px;
+    max-width: 95vw;
+    box-sizing: border-box;
+  }
+  .review-panel {
+    gap: 0;
+    width: 320px;
+    max-width: 95vw;
+    box-sizing: border-box;
   }
   .review-panel .card {
     width: 100%;
-    padding: 14px 16px 12px;
+    padding: 12px 14px 10px;
     border-radius: 12px;
+    overflow-x: hidden;
+    overflow-y: visible;
+    box-sizing: border-box;
+  }
+  .card-controls {
+    width: 100%;
+    padding: 0 14px 10px;
+    margin-top: 18px;
+    box-sizing: border-box;
+  }
+  .card-controls .controls {
+    margin-top: 0;
+  }
+  .review-panel .finish {
+    width: 100%;
   }
   .hanzi {
-    font-size: clamp(70px, 20vw, 180px);
+    font-size: clamp(84px, 27vw, 210px);
   }
   .unicode {
-    font-size: 14px;
+    font-size: 13px;
+    margin-top: 10px;
+    margin-bottom: 3px;
+    line-height: 1.6;
+  }
+  .meta-area {
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: visible;
+    width: 100%;
   }
   .meta-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    grid-template-columns: 1fr 1fr; /* 字集、分類並排 */
+    gap: 8px;
+    min-width: 0;
+    width: 100%;
   }
   .meta-item {
-    padding: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .meta-label {
+    font-size: 12px;
+  }
+  .meta-value {
+    font-size: 14px;
+    min-width: 0;
+    overflow: hidden;
   }
   .controls {
     grid-template-columns: 1fr 1fr 1fr;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 10px;
   }
   button {
-    padding: 10px 12px;
-    font-size: 14px;
+    margin: 8 0 px;
+    padding: 7px 12px; /* 減少上下 padding */
+    font-size: 12px;
   }
-  .secondary-controls {
-    margin-top: 6px;
-  }
+
   .index-indicator {
-    font-size: 13px;
+    font-size: 12px;
   }
-  textarea#userNote {
-    min-height: 64px;
+  textarea#userNote,
+  .meta-value textarea {
+    min-height: 60px;
+  }
+  .progress-row {
+    font-size: 12px;
+  }
+  .progress-bar {
+    height: 6px;
+  }
+  .more-menu {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: visible;
+    width: 100%;
+    box-sizing: border-box;
+    border: none;
+  }
+  .more-menu .menu-row {
+    grid-template-columns: 1fr auto;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .more-menu input#searchChar {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .more-menu .menu-row button {
+    width: auto;
+    white-space: nowrap;
+  }
+  .more-menu .menu-row .menu-label {
+    display: none;
   }
 }
 
 @media (max-width: 360px) {
   .hanzi {
-    font-size: clamp(64px, 18vw, 160px);
+    font-size: clamp(72px, 24vw, 180px);
   }
   button {
-    padding: 9px 10px;
+    padding: 6px 10px; /* 更小上下 padding */
     font-size: 13px;
   }
   .meta-item {
-    padding: 8px;
+    padding: 6px;
+  }
+  .meta-value {
+    font-size: 13px;
   }
 }
