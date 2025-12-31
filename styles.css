@@ -228,6 +228,13 @@ button:disabled {
   transition: color 0.2s ease;
   line-height: 1.6;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  display: inline-block;
+  position: relative;
+  z-index: 10;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .copy-link:hover {
   color: var(--primary);
@@ -448,6 +455,8 @@ textarea#userNote:focus,
   }
   .copy-link {
     font-size: 13px;
+    padding: 2px 4px;
+    margin: -2px -4px;
   }
   .meta-area {
     min-width: 0;
