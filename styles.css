@@ -213,6 +213,33 @@ button:disabled {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 16px;
 }
+.seq-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  justify-content: center;
+}
+.copy-link {
+  font-size: 16px;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  line-height: 1.6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.copy-link:hover {
+  color: var(--primary);
+}
+.copy-link:active {
+  color: var(--primary);
+  opacity: 0.8;
+}
+/* 空資料的灰色樣式 */
+.empty {
+  color: #9ca3af !important;
+}
 
 .meta-area {
   background: transparent;
@@ -418,6 +445,9 @@ textarea#userNote:focus,
     margin-top: 10px;
     margin-bottom: 3px;
     line-height: 1.6;
+  }
+  .copy-link {
+    font-size: 13px;
   }
   .meta-area {
     min-width: 0;

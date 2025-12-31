@@ -29,6 +29,7 @@
     seqDisplay: document.getElementById("seqDisplay"),
     charDisplay: document.getElementById("charDisplay"),
     unicodeDisplay: document.getElementById("unicodeDisplay"),
+    copyCharBtn: document.getElementById("copyCharBtn"),
     fieldSet: document.getElementById("fieldSet"),
     fieldCategory: document.getElementById("fieldCategory"),
     fieldNote: document.getElementById("fieldNote"),
@@ -317,15 +318,52 @@
     const entry = entries[idx];
     els.indexNow.textContent = String(idx + 1);
     els.seqDisplay.textContent = entry.id ? `序號 ${entry.id}` : "";
-    els.charDisplay.textContent = entry.char || "—";
-    els.unicodeDisplay.textContent = entry.unicode ? `U+${entry.unicode}` : "";
-    els.fieldSet.textContent = entry.set || "—";
-    els.fieldCategory.textContent = entry.category || "—";
-    els.fieldNote.textContent = entry.note || "—";
+    // 顯示漢字，沒有資料時顯示「-」並添加灰色樣式
+    const char = entry.char || "";
+    els.charDisplay.textContent = char || "-";
+    if (!char) {
+      els.charDisplay.classList.add("empty");
+    } else {
+      els.charDisplay.classList.remove("empty");
+    }
+    // Unicode 顯示
+    const unicode = entry.unicode || "";
+    els.unicodeDisplay.textContent = unicode ? `U+${unicode}` : "-";
+    if (!unicode) {
+      els.unicodeDisplay.classList.add("empty");
+    } else {
+      els.unicodeDisplay.classList.remove("empty");
+    }
+    // 其他欄位
+    const set = entry.set || "";
+    els.fieldSet.textContent = set || "-";
+    if (!set) {
+      els.fieldSet.classList.add("empty");
+    } else {
+      els.fieldSet.classList.remove("empty");
+    }
+    const category = entry.category || "";
+    els.fieldCategory.textContent = category || "-";
+    if (!category) {
+      els.fieldCategory.classList.add("empty");
+    } else {
+      els.fieldCategory.classList.remove("empty");
+    }
+    const entryNote = entry.note || "";
+    els.fieldNote.textContent = entryNote || "-";
+    if (!entryNote) {
+      els.fieldNote.classList.add("empty");
+    } else {
+      els.fieldNote.classList.remove("empty");
+    }
     // 帶入既有筆記
     const d = decisions[entry.id];
-    const note = typeof d === "object" && d ? d.note || "" : "";
-    if (els.userNote) els.userNote.value = note;
+    const userNoteValue = typeof d === "object" && d ? d.note || "" : "";
+    if (els.userNote) els.userNote.value = userNoteValue;
+    // 重置複製連結文字
+    if (els.copyCharBtn) {
+      els.copyCharBtn.textContent = "複製此字";
+    }
     els.finishBanner.classList.add("hidden");
   }
 
@@ -623,23 +661,25 @@
       const total = entries.length;
       el.innerHTML = `
         <div class="char-area">
-          <div class="unicode">${next.id ? `序號 ${next.id}` : ""}</div>
-          <div class="hanzi">${next.char || "—"}</div>
-          <div class="unicode">${next.unicode ? `U+${next.unicode}` : ""}</div>
+          <div class="seq-row">
+            <div class="unicode">${next.id ? `序號 ${next.id}` : ""}</div>
+          </div>
+          <div class="hanzi">${next.char || "-"}</div>
+          <div class="unicode">${next.unicode ? `U+${next.unicode}` : "-"}</div>
         </div>
         <div class="meta-area">
           <div class="meta-grid">
             <div class="meta-item">
               <div class="meta-label">字集</div>
-              <div class="meta-value">${next.set || "—"}</div>
+              <div class="meta-value">${next.set || "-"}</div>
             </div>
             <div class="meta-item">
               <div class="meta-label">分類</div>
-              <div class="meta-value">${next.category || "—"}</div>
+              <div class="meta-value">${next.category || "-"}</div>
             </div>
             <div class="meta-item span-2">
               <div class="meta-label">附註</div>
-              <div class="meta-value pre-wrap">${next.note || "—"}</div>
+              <div class="meta-value pre-wrap">${next.note || "-"}</div>
             </div>
             <div class="meta-item span-2">
               <div class="meta-label">評選者筆記</div>
@@ -787,6 +827,38 @@
     els.btnDrop.addEventListener("click", () => decideWithAnimation("drop"));
     els.btnSkip.addEventListener("click", () => decideWithAnimation("skip"));
     els.btnUndo.addEventListener("click", undoLast);
+
+    // 複製漢字功能
+    if (els.copyCharBtn) {
+      els.copyCharBtn.addEventListener("click", async (e) => {
+        e.preventDefault(); // 阻止連結預設行為
+        e.stopPropagation(); // 阻止事件冒泡，避免觸發滑動手勢
+        const char = els.charDisplay.textContent.trim();
+        if (!char || char === "-") return;
+        try {
+          await navigator.clipboard.writeText(char);
+          // 文字變為「已複製」
+          els.copyCharBtn.textContent = "已複製";
+        } catch (err) {
+          // 降級方案：使用傳統方法
+          const textArea = document.createElement("textarea");
+          textArea.value = char;
+          textArea.style.position = "fixed";
+          textArea.style.opacity = "0";
+          document.body.appendChild(textArea);
+          textArea.select();
+          try {
+            document.execCommand("copy");
+            // 文字變為「已複製」
+            els.copyCharBtn.textContent = "已複製";
+          } catch (fallbackErr) {
+            console.error("複製失敗", fallbackErr);
+            alert("複製失敗，請手動選取文字");
+          }
+          document.body.removeChild(textArea);
+        }
+      });
+    }
 
     // 更多選單：顯示/隱藏
     if (els.menuBtn && els.moreMenu) {
