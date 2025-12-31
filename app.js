@@ -521,25 +521,8 @@
     const maxRotateDeg = 10;
     const rect = target.getBoundingClientRect();
     const ghost = target.cloneNode(true);
-    ghost.style.position = "fixed";
-    ghost.style.left = rect.left + "px";
-    ghost.style.top = rect.top + "px";
-    ghost.style.width = rect.width + "px";
-    ghost.style.height = rect.height + "px";
-    ghost.style.margin = "0";
-    ghost.style.zIndex = "999";
-    ghost.style.pointerEvents = "none";
-    ghost.style.transform = "";
-    document.body.appendChild(ghost);
 
-    // 底層卡片歸位
-    target.style.transition = "";
-    target.style.transform = "";
-
-    // 先決策以立即換下一張
-    decideCurrent(decision);
-
-    // 幽靈卡片滑出動畫
+    // 計算動畫目標位置
     const width = rect.width || 300;
     const height = rect.height || 200;
     let outX = 0,
@@ -557,16 +540,46 @@
       outRot = 0;
     }
 
+    // 設置幽靈卡片樣式
+    ghost.style.position = "fixed";
+    ghost.style.left = rect.left + "px";
+    ghost.style.top = rect.top + "px";
+    ghost.style.width = rect.width + "px";
+    ghost.style.height = rect.height + "px";
+    ghost.style.margin = "0";
+    ghost.style.zIndex = "999";
+    ghost.style.pointerEvents = "none";
+    ghost.style.willChange = "transform";
+    ghost.style.transform = "translate(0px, 0px) rotate(0deg)";
+    ghost.style.transition = "none";
+    document.body.appendChild(ghost);
+
+    // 強制重排，確保初始狀態已渲染
+    ghost.offsetHeight;
+
+    // 底層卡片歸位
+    target.style.transition = "";
+    target.style.transform = "";
+
+    // 先決策以立即換下一張
+    decideCurrent(decision);
+
+    // 使用雙重 requestAnimationFrame 確保動畫觸發
     requestAnimationFrame(() => {
-      ghost.style.transition = "transform 350ms ease";
-      if (decision === "skip") {
-        ghost.style.transform = `translate(0px, ${outY}px) rotate(0deg)`;
-      } else {
-        ghost.style.transform = `translate(${outX}px, 0px) rotate(${outRot}deg)`;
-      }
-      setTimeout(() => {
-        if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
-      }, 360);
+      requestAnimationFrame(() => {
+        ghost.style.transition = "transform 350ms ease";
+        if (decision === "skip") {
+          ghost.style.transform = `translate(0px, ${outY}px) rotate(0deg)`;
+        } else {
+          ghost.style.transform = `translate(${outX}px, 0px) rotate(${outRot}deg)`;
+        }
+        setTimeout(() => {
+          if (ghost && ghost.parentNode) {
+            ghost.style.willChange = "auto";
+            ghost.parentNode.removeChild(ghost);
+          }
+        }, 360);
+      });
     });
   }
 
