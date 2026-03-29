@@ -100,8 +100,9 @@
   /** 嘗試載入主要資料（僅 data.csv） */
   async function autoLoadPrimaryData() {
     try {
-      const path = "./data.csv";
-      const res = await fetch(path, { cache: "no-store" });
+      // 查詢字串避免 CDN／瀏覽器沿用舊版 data.csv（GitHub Pages 常設 max-age）
+      const path = `./data.csv?_=${Date.now()}`;
+      const res = await fetch(path, { cache: "reload" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
       const { headers, rows } = parseCSV(text);
@@ -109,7 +110,7 @@
       const filtered = filterRowsByExclude(rows, headers);
       rawRows = filtered;
       entries = mapEntries(filtered, headers);
-      fileName = path.replace(/^.\//, "");
+      fileName = "data.csv";
       // 更新 UI 狀態
       els.countTotal.textContent = String(entries.length);
       updateStats();
