@@ -97,30 +97,36 @@
     });
   }
 
-  /** 嘗試載入主要資料（僅 data.csv） */
+  /** 嘗試載入主要資料（英文介面優先 data-en.csv，失敗則回退 data.csv） */
   async function autoLoadPrimaryData() {
-    try {
-      // 查詢字串避免 CDN／瀏覽器沿用舊版 data.csv（GitHub Pages 常設 max-age）
-      const path = `./data.csv?_=${Date.now()}`;
-      const res = await fetch(path, { cache: "reload" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      const { headers, rows } = parseCSV(text);
-      if (!headers.length) throw new Error("empty headers");
-      const filtered = filterRowsByExclude(rows, headers);
-      rawRows = filtered;
-      entries = mapEntries(filtered, headers);
-      fileName = "data.csv";
-      // 更新 UI 狀態
-      els.countTotal.textContent = String(entries.length);
-      updateStats();
-      els.startBtn.disabled = entries.length === 0;
-      console.info(
-        `[autoLoad] 已載入主要資料：${path}（${entries.length} 筆）`
-      );
-    } catch (err) {
-      console.error("[autoLoad] data.csv 載入失敗，請確認檔案是否存在。", err);
+    const candidates = ["data-en.csv", "data.csv"];
+    let lastErr = null;
+    for (const file of candidates) {
+      try {
+        // 查詢字串避免 CDN／瀏覽器沿用舊版（GitHub Pages 常設 max-age）
+        const path = `./${file}?_=${Date.now()}`;
+        const res = await fetch(path, { cache: "reload" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        const { headers, rows } = parseCSV(text);
+        if (!headers.length) throw new Error("empty headers");
+        const filtered = filterRowsByExclude(rows, headers);
+        rawRows = filtered;
+        entries = mapEntries(filtered, headers);
+        fileName = file;
+        els.countTotal.textContent = String(entries.length);
+        updateStats();
+        els.startBtn.disabled = entries.length === 0;
+        console.info(
+          `[autoLoad] loaded primary data: ${path} (${entries.length} rows)`
+        );
+        return;
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[autoLoad] failed to load ${file}, trying next…`, err);
+      }
     }
+    console.error("[autoLoad] could not load data-en.csv or data.csv", lastErr);
   }
 
   /** CSV 解析（RFC 4180，支援多行、引號、雙引號跳脫） */
@@ -214,24 +220,59 @@
     return { headers, rows: objects };
   }
 
-  /** 嘗試以常見中文欄位名稱建立映射 */
+  /** 嘗試以常見中／英欄位名稱建立映射 */
   function buildHeaderMap(headers) {
-    // 來自你的 CSV：序號, 漢字, Unicode, 字集, ..., 分類, 附註
+    // data.csv / data-en.csv：序號|No., 漢字|Character, Unicode, 字集|Set, 分類|Category, 附註|Notes
     const map = {};
     const norm = (s) => String(s || "").trim();
     headers.forEach((h) => {
       const n = norm(h);
-      if (!map.id && (n === "序號" || n === "編號" || n.toLowerCase() === "id"))
+      const lower = n.toLowerCase();
+      if (
+        !map.id &&
+        (n === "序號" ||
+          n === "編號" ||
+          n === "No." ||
+          lower === "id" ||
+          lower === "no" ||
+          lower === "no.")
+      )
         map.id = h;
-      if (!map.char && (n === "漢字" || n === "字" || n === "字符"))
+      if (
+        !map.char &&
+        (n === "漢字" ||
+          n === "字" ||
+          n === "字符" ||
+          n === "Character" ||
+          lower === "character" ||
+          lower === "hanzi")
+      )
         map.char = h;
-      if (!map.unicode && (n === "Unicode" || n.toLowerCase() === "unicode"))
+      if (!map.unicode && (n === "Unicode" || lower === "unicode"))
         map.unicode = h;
-      if (!map.set && (n === "字集" || n === "來源" || n === "表")) map.set = h;
-      if (!map.category && (n === "分類" || n === "類別")) map.category = h;
+      if (
+        !map.set &&
+        (n === "字集" || n === "來源" || n === "表" || n === "Set" || lower === "set")
+      )
+        map.set = h;
+      if (
+        !map.category &&
+        (n === "分類" ||
+          n === "類別" ||
+          n === "Category" ||
+          lower === "category")
+      )
+        map.category = h;
       if (
         !map.note &&
-        (n === "附註" || n === "備註" || n === "說明" || n === "備注")
+        (n === "附註" ||
+          n === "備註" ||
+          n === "說明" ||
+          n === "備注" ||
+          n === "Notes" ||
+          n === "Note" ||
+          lower === "notes" ||
+          lower === "note")
       )
         map.note = h;
     });
