@@ -318,7 +318,7 @@
     }
     const entry = entries[idx];
     els.indexNow.textContent = String(idx + 1);
-    els.seqDisplay.textContent = entry.id ? `序號 ${entry.id}` : "";
+    els.seqDisplay.textContent = entry.id ? `No. ${entry.id}` : "";
     // 顯示漢字，沒有資料時顯示「-」並添加灰色樣式
     const char = entry.char || "";
     els.charDisplay.textContent = char || "-";
@@ -361,9 +361,9 @@
     const d = decisions[entry.id];
     const userNoteValue = typeof d === "object" && d ? d.note || "" : "";
     if (els.userNote) els.userNote.value = userNoteValue;
-    // 重置複製連結文字
+    // Reset copy link text
     if (els.copyCharBtn) {
-      els.copyCharBtn.textContent = "複製此字";
+      els.copyCharBtn.textContent = "Copy";
     }
     els.finishBanner.classList.add("hidden");
   }
@@ -449,7 +449,7 @@
     const { keep, drop, skip } = getCounts();
     const decided = keep + drop + skip;
     if (decided > 0 && decided % 100 === 0) {
-      alert(`完成 ${decided} 字了，你好棒！`);
+      alert(`${decided} characters done — nice work!`);
     }
     renderCurrent();
   }
@@ -472,8 +472,8 @@
   function exportCSV() {
     if (!rawRows.length) return;
     const decisions = loadDecisions();
-    // 匯出「漢字、決策、評選者筆記」三欄，保留漢字本體
-    const outHeaders = ["漢字", "決策", "評選者筆記"];
+    // Export Character / Decision / Reviewer note; keep character values as-is
+    const outHeaders = ["Character", "Decision", "Reviewer note"];
     const lines = [];
     const esc = (v) => {
       const s = v == null ? "" : String(v);
@@ -683,7 +683,7 @@
       el.innerHTML = `
         <div class="char-area">
           <div class="seq-row">
-            <div class="unicode">${next.id ? `序號 ${next.id}` : ""}</div>
+            <div class="unicode">${next.id ? `No. ${next.id}` : ""}</div>
           </div>
           <div class="hanzi">${next.char || "-"}</div>
           <div class="unicode">${next.unicode ? `U+${next.unicode}` : "-"}</div>
@@ -691,21 +691,21 @@
         <div class="meta-area">
           <div class="meta-grid">
             <div class="meta-item">
-              <div class="meta-label">字集</div>
+              <div class="meta-label">Set</div>
               <div class="meta-value">${next.set || "-"}</div>
             </div>
             <div class="meta-item">
-              <div class="meta-label">分類</div>
+              <div class="meta-label">Category</div>
               <div class="meta-value">${next.category || "-"}</div>
             </div>
             <div class="meta-item span-2">
-              <div class="meta-label">附註</div>
+              <div class="meta-label">Notes</div>
               <div class="meta-value pre-wrap">${next.note || "-"}</div>
             </div>
             <div class="meta-item span-2">
-              <div class="meta-label">評選者筆記</div>
+              <div class="meta-label">Reviewer note</div>
               <div class="meta-value">
-                <textarea rows="2" placeholder="請留言去留理由🥹" disabled>${notePreview}</textarea>
+                <textarea rows="2" placeholder="Why keep or drop? 🥹" disabled>${notePreview}</textarea>
               </div>
             </div>
           </div>
@@ -830,7 +830,9 @@
     bindSwipe();
     if (els.clearBtn) {
       els.clearBtn.addEventListener("click", () => {
-        const ok = confirm("確定要清除所有評選紀錄與筆記嗎？此動作無法復原。");
+        const ok = confirm(
+          "Clear all review decisions and notes? This cannot be undone."
+        );
         if (!ok) return;
         localStorage.removeItem(STORAGE_KEYS.decisions);
         localStorage.removeItem(STORAGE_KEYS.history);
@@ -838,7 +840,7 @@
         if (els.userNote) els.userNote.value = "";
         updateStats();
         renderCurrent();
-        alert("已清除所有紀錄。");
+        alert("All records cleared.");
       });
     }
 
@@ -856,10 +858,9 @@
         if (!char || char === "-") return;
         try {
           await navigator.clipboard.writeText(char);
-          // 文字變為「已複製」
-          els.copyCharBtn.textContent = "已複製";
+          els.copyCharBtn.textContent = "Copied";
         } catch (err) {
-          // 降級方案：使用傳統方法
+          // Fallback: legacy copy method
           const textArea = document.createElement("textarea");
           textArea.value = char;
           textArea.style.position = "fixed";
@@ -868,11 +869,10 @@
           textArea.select();
           try {
             document.execCommand("copy");
-            // 文字變為「已複製」
-            els.copyCharBtn.textContent = "已複製";
+            els.copyCharBtn.textContent = "Copied";
           } catch (fallbackErr) {
-            console.error("複製失敗", fallbackErr);
-            alert("複製失敗，請手動選取文字");
+            console.error("Copy failed", fallbackErr);
+            alert("Copy failed. Please select the text manually.");
           }
           document.body.removeChild(textArea);
         }
@@ -899,16 +899,16 @@
         const input = String(els.searchChar.value || "");
         const ch = normalizeFirstChar(input);
         if (!ch) {
-          alert("請輸入欲查找的漢字（取第一個字）");
+          alert("Please enter a character to search (first character is used).");
           return;
         }
         const pos = findIndexByFirstChar(ch);
         if (pos >= 0) {
           idx = pos;
-          renderCurrent(true); // 強制顯示該字，即使已評選
+          renderCurrent(true); // Force show even if already reviewed
           els.moreMenu && els.moreMenu.classList.add("hidden");
         } else {
-          alert("找不到該字。");
+          alert("Character not found.");
         }
       };
       els.searchGo.addEventListener("click", doSearch);
@@ -928,7 +928,7 @@
           renderCurrent();
           els.moreMenu && els.moreMenu.classList.add("hidden");
         } else {
-          alert("太棒了！目前沒有尚未評選的項目。");
+          alert("Nice! There are no unreviewed items left.");
         }
       });
     }
